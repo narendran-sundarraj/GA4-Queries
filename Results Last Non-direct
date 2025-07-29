@@ -1,0 +1,35 @@
+with lnd as (select
+  session_id,
+  user_pseudo_id,
+  session_start,
+  session_first_traffic_source_1,
+  ifnull(
+    session_first_traffic_source_1,
+    last_value(session_last_traffic_source ignore nulls) over(
+      partition by user_pseudo_id
+      order by
+        session_start range between 2592000 preceding
+        and 1 preceding -- 30 day lookback
+    )
+  ) as session_traffic_source_last_non_direct,
+from
+  `steam-mantis-108908.test_last_nondirect_attribution.sessions_with_cpc`)
+
+
+
+select
+  ifnull(session_traffic_source_last_non_direct.manual_source, 
+    '(direct)'
+  ) as source,
+  ifnull(session_traffic_source_last_non_direct.manual_medium, 
+    '(none)'
+  ) as medium,
+  count(distinct session_id) as sessions
+from
+  lnd
+
+group by
+  1,
+  2
+order by
+  sessions desc, source

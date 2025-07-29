@@ -1,0 +1,66 @@
+with events as (
+   select
+    cast(event_date as date format 'YYYYMMDD') as date,
+    concat(user_pseudo_id, (select value.int_value from unnest(event_params) where key = 'ga_session_id')) as session_id,
+    user_pseudo_id,
+    (select value.int_value from unnest(event_params) where key = 'ga_session_id') as session_start,
+    collected_traffic_source,
+    event_timestamp
+  from
+    `steam-mantis-108908.analytics_216367908.events_*`
+  where
+    (_table_suffix >= '20250110' and _table_suffix <= '20250110')
+    and event_name not in ('session_start', 'first_visit')
+)
+select
+ min(date) as date,
+  session_id,
+  user_pseudo_id,
+  session_start,
+  array_agg(
+    collected_traffic_source
+    order by
+      event_timestamp asc
+    limit
+      1
+  ) [safe_offset(0)] as session_first_traffic_source,
+  array_agg(
+    if(
+      collected_traffic_source is not null,
+      (
+          select as struct 
+            collected_traffic_source.* except(manual_source, manual_medium),
+            if(collected_traffic_source.gclid is not null, 'google', collected_traffic_source.manual_source) as manual_source,
+            if(collected_traffic_source.gclid is not null, 'cpc', collected_traffic_source.manual_medium) as manual_medium
+      ),
+      null
+    )
+    order by
+      event_timestamp asc
+    limit
+      1
+  ) [safe_offset(0)] as session_first_traffic_source,
+  array_agg(
+    if(
+      collected_traffic_source is not null,
+      (
+          select as struct 
+            collected_traffic_source.* except(manual_source, manual_medium),
+            if(collected_traffic_source.gclid is not null, 'google', collected_traffic_source.manual_source) as manual_source,
+            if(collected_traffic_source.gclid is not null, 'cpc', collected_traffic_source.manual_medium) as manual_medium
+      ),
+      null
+    ) ignore nulls
+    order by
+      event_timestamp desc
+    limit
+      1
+  ) [safe_offset(0)] as session_last_traffic_source
+from
+  events
+where
+  session_id is not null
+group by
+  session_id,
+  user_pseudo_id,
+  session_start

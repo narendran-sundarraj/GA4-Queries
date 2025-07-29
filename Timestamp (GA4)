@@ -1,0 +1,132 @@
+WITH ga AS (
+  SELECT
+    DATE(TIMESTAMP_MICROS(event_timestamp)) AS date,
+    concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id')) AS sessionId,
+    collected_traffic_source.manual_source as source, 
+    collected_traffic_source.manual_medium as medium,
+    device.category as Device,
+    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'GUID_Event') AS GUID,
+    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'Interface_Brand') AS Brand,
+    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'Customer_Status_Event') AS Customer_Status,
+    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'User_Reg_Step') AS Reg_Step,
+    geo.country AS Country,
+    (CAST(event_timestamp / 1000000 AS INT64)) AS hit_ts,
+    event_name,
+    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'EventAction') AS event_action
+  FROM `steam-mantis-108908.analytics_270382730.events_*`
+  WHERE _table_suffix BETWEEN '20240801' AND '20241101'
+    AND event_name IN ('Registration_Funnel')
+),
+
+zeroth_event AS (
+  SELECT
+    sessionId,
+    MIN(hit_ts) AS quote_ts
+  FROM ga
+  WHERE event_action = 'Registration Form Open'
+  GROUP BY 1
+),
+
+first_event AS (
+  SELECT
+    sessionId,
+    MIN(hit_ts) AS app_complete_ts
+  FROM ga
+  WHERE event_name= 'Registration_Funnel' AND Reg_Step = "Step 1 (personal group - name)"
+  GROUP BY 1
+),
+
+second_event AS (
+  SELECT
+    sessionId,
+    MIN(hit_ts) AS app_complete_ts
+  FROM ga
+  WHERE event_name= 'Registration_Funnel' AND Reg_Step = "Step 2 (personal group - password)"
+  GROUP BY 1
+),
+
+third_event AS (
+  SELECT
+    sessionId,
+    MIN(hit_ts) AS app_complete_ts
+  FROM ga
+  WHERE event_name= 'Registration_Funnel' AND Reg_Step = "Step 3 (address group - address)"
+  GROUP BY 1
+),
+
+fourth_event AS (
+  SELECT
+    sessionId,
+    MIN(hit_ts) AS app_complete_ts
+  FROM ga
+  WHERE event_name= 'Registration_Funnel' AND Reg_Step = "Step 4 (extra group - phone)"
+  GROUP BY 1
+),
+
+fifth_event AS (
+  SELECT
+    sessionId,
+    MIN(hit_ts) AS app_complete_ts
+  FROM ga
+  WHERE event_name= 'Registration_Funnel' AND Reg_Step = "Step 5 (extra group - additional)"
+  GROUP BY 1
+),
+
+sixth_event AS (
+  SELECT
+    sessionId,
+    MIN(hit_ts) AS app_complete_ts
+  FROM ga
+  WHERE event_name= 'Registration_Funnel' AND Reg_Step = "Step 6 (extra group - deposit-limit)"
+  GROUP BY 1
+),
+
+seventh_event AS (
+  SELECT
+    sessionId,
+    date,
+    GUID, Brand, Customer_Status, Country, Device, source, medium,
+    MIN(hit_ts) AS app_complete_ts
+  FROM ga
+  WHERE event_action = 'NRC'
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+),
+
+joined AS (
+  SELECT
+    date, sessionId, Country, Device, source, medium,
+    GUID, Brand, Customer_Status,
+    zeroth_event.quote_ts AS F0,
+    first_event.app_complete_ts AS F1,
+    second_event.app_complete_ts AS F2,
+    third_event.app_complete_ts AS F3,
+    fourth_event.app_complete_ts AS F4,
+    fifth_event.app_complete_ts AS F5,
+    sixth_event.app_complete_ts AS F6,
+    seventh_event.app_complete_ts AS F7
+  FROM zeroth_event
+  INNER JOIN first_event USING(sessionId)
+  INNER JOIN second_event USING(sessionId)
+  INNER JOIN third_event USING(sessionId)
+  INNER JOIN fourth_event USING(sessionId)
+  INNER JOIN fifth_event USING(sessionId)
+  INNER JOIN sixth_event USING(sessionId)
+  INNER JOIN seventh_event USING(sessionId)
+)
+
+SELECT 
+  date,
+  Country,
+  joined.GUID, Device, source, medium, 
+  Brand, 
+  Customer_Status,
+  joined.F0 AS Reg_Form_Open,
+  joined.F1 AS Step1,
+  joined.F2 AS Step2,
+  joined.F3 AS Step3,
+  joined.F4 AS Step4,
+  joined.F5 AS Step5,
+  joined.F6 AS Step6,
+  joined.F7 AS NRC
+FROM joined
+WHERE Customer_Status = 'Prospect';

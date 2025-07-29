@@ -1,0 +1,315 @@
+with RNS as(SELECT   
+    --SESSION COLUMNS
+    Property_ID
+    ,Date
+    ,Session_ID
+    ,User_ID
+    ,Session_Number
+    ,Session_Engaged
+    ,Interface_Brand
+    ,Customer_Status_Start
+    ,City
+    ,Continent
+    ,Country
+    ,Region
+    ,Device_Brand_Name
+    ,Device_Browser
+    ,Device_Browser_Version
+    ,Device_Category
+    ,Device_Marketing_Name
+    ,Device_Model_Name
+    ,Device_OS
+    ,Device_OS_Version
+
+    --GLOBAL DIMENSIONS
+    ,Traffic_Medium
+    ,Traffic_Source
+    ,Content_Group
+    ,Event_Name
+    ,Event_Action
+    ,Customer_Status_Event
+    ,Device_Hostname
+    ,Login_Status
+    ,Page_Location
+    ,Page_Referrer
+    ,Page_Title
+    ,Technical_EventName
+    ,Technical_ScreenOrientation
+    ,Technical_ScreenResolution
+    ,User_CustomerLevel
+    ,Sub_Area
+    ,Technical_PlatformName
+
+    --EVENT SPECIFIC DIMENSIONS
+    ,User_Reg_Step
+    ,Event_Timestamp AS hit_ts
+    
+    --METRICS
+    ,COUNT(*) AS Event_Count
+
+FROM(
+SELECT * FROM steam-mantis-108908.Web_Analytics.270389480
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.345721586
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.282392101
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326546621
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326546361
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326547182
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326497634
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.344917462
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270369193
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.323032716
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.369344384
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326671725
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326660191
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326408170
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326649423
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270372273
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326629578
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326650420
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.344980665
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326624957
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270382730
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.435048955
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.216367908
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270372101
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.282543507
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.282510694
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270352833
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270382267
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270412437
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.347097957
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.346483255
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270361811
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270410004
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326628458
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.346955191
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270391072
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270400311
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.282401733
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.326507697
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270380201
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.346480383
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270354118
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.347130828
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.347145362
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.347121847
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.347189984
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.346938887
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.216807831
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.270355736
+UNION ALL
+SELECT * FROM steam-mantis-108908.Web_Analytics.346970928
+)
+
+WHERE
+
+Event_Name='Registration_Funnel' --filter event_name
+AND Date = "2024-10-31"
+
+GROUP BY
+    
+    --SESSION COLUMNS
+    Property_ID
+    ,Date
+    ,Session_ID
+    ,User_ID
+    ,Session_Number
+    ,Session_Engaged
+    ,Interface_Brand
+    ,Customer_Status_Start
+    ,City
+    ,Continent
+    ,Country
+    ,Region
+    ,Device_Brand_Name
+    ,Device_Browser
+    ,Device_Browser_Version
+    ,Device_Category
+    ,Device_Marketing_Name
+    ,Device_Model_Name
+    ,Device_OS
+    ,Device_OS_Version
+
+    --GLOBAL DIMENSIONS
+    ,Traffic_Medium
+    ,Traffic_Source
+    ,Content_Group
+    ,Event_Name
+    ,Event_Action
+    ,Customer_Status_Event
+    ,Device_Hostname
+    ,Login_Status
+    ,Page_Location
+    ,Page_Referrer
+    ,Page_Title
+    ,Technical_EventName
+    ,Technical_ScreenOrientation
+    ,Technical_ScreenResolution
+    ,User_CustomerLevel
+    ,Sub_Area
+    ,Technical_PlatformName
+
+    --EVENT SPECIFIC DIMENSIONS
+    ,User_Reg_Step
+    ,Event_Timestamp
+),
+
+zeroth_event AS (
+  SELECT
+    Session_ID,
+    MIN(hit_ts) AS quote_ts
+  FROM RNS
+  WHERE event_action = 'Registration Form Open'
+  GROUP BY 1
+),
+
+first_event AS (
+  SELECT
+    Session_ID,
+    MIN(hit_ts) AS app_complete_ts
+  FROM RNS
+  WHERE event_name= 'Registration_Funnel' AND User_Reg_Step = "Step 1 (personal group - name)"
+  GROUP BY 1
+),
+
+second_event AS (
+  SELECT
+    Session_ID,
+    MIN(hit_ts) AS app_complete_ts
+  FROM RNS
+  WHERE event_name= 'Registration_Funnel' AND User_Reg_Step = "Step 2 (personal group - password)"
+  GROUP BY 1
+),
+
+third_event AS (
+  SELECT
+    Session_ID,
+    MIN(hit_ts) AS app_complete_ts
+  FROM RNS
+  WHERE event_name= 'Registration_Funnel' AND User_Reg_Step = "Step 3 (address group - address)"
+  GROUP BY 1
+),
+
+fourth_event AS (
+  SELECT
+    Session_ID,
+    MIN(hit_ts) AS app_complete_ts
+  FROM RNS
+  WHERE event_name= 'Registration_Funnel' AND User_Reg_Step = "Step 4 (extra group - phone)"
+  GROUP BY 1
+),
+
+fifth_event AS (
+  SELECT
+    Session_ID,
+    MIN(hit_ts) AS app_complete_ts
+  FROM RNS
+  WHERE event_name= 'Registration_Funnel' AND User_Reg_Step = "Step 5 (extra group - additional)"
+  GROUP BY 1
+),
+
+sixth_event AS (
+  SELECT
+    Session_ID,
+    MIN(hit_ts) AS app_complete_ts
+  FROM RNS
+  WHERE event_name= 'Registration_Funnel' AND User_Reg_Step = "Step 6 (extra group - deposit-limit)"
+  GROUP BY 1
+),
+
+seventh_event AS (
+  SELECT
+    Session_ID,
+    date,
+     Interface_Brand, Customer_Status_Start, Country, Device_Category, Traffic_Source, Traffic_Medium,
+    MIN(hit_ts) AS app_complete_ts
+  FROM RNS
+  WHERE event_action = 'NRC'
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+),
+
+joined AS (
+  SELECT
+    date, Session_ID, Country, Device_Category, Traffic_Source, Traffic_Medium,
+     Interface_Brand, Customer_Status_Start,
+    zeroth_event.quote_ts AS F0,
+    first_event.app_complete_ts AS F1,
+    second_event.app_complete_ts AS F2,
+    third_event.app_complete_ts AS F3,
+    fourth_event.app_complete_ts AS F4,
+    fifth_event.app_complete_ts AS F5,
+    sixth_event.app_complete_ts AS F6,
+    seventh_event.app_complete_ts AS F7
+  FROM zeroth_event
+  INNER JOIN first_event USING(Session_ID)
+  INNER JOIN second_event USING(Session_ID)
+  INNER JOIN third_event USING(Session_ID)
+  INNER JOIN fourth_event USING(Session_ID)
+  INNER JOIN fifth_event USING(Session_ID)
+  INNER JOIN sixth_event USING(Session_ID)
+  INNER JOIN seventh_event USING(Session_ID)
+)
+
+SELECT 
+  date,
+  Country, Device_Category, Traffic_Source, Traffic_Medium, 
+  Interface_Brand, 
+  Customer_Status_Start,
+  joined.F0 AS Reg_Form_Open,
+  joined.F1 AS Step1,
+  joined.F2 AS Step2,
+  joined.F3 AS Step3,
+  joined.F4 AS Step4,
+  joined.F5 AS Step5,
+  joined.F6 AS Step6,
+  joined.F7 AS NRC
+FROM joined
+WHERE Customer_Status_Start = 'Prospect';

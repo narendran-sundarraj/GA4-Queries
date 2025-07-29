@@ -1,0 +1,138 @@
+WITH raw_data AS (
+  SELECT 
+    DISTINCT TIMESTAMP_MICROS(event_timestamp) AS event_datetime, 
+    event_timestamp, 
+    user_pseudo_id, 
+    event_name, 
+    stream_id, 
+    geo.country AS geo_country, 
+    CONCAT(
+      CONCAT(
+        (
+          CASE WHEN event_params_un.key = 'ga_session_id' THEN event_params_un.value.int_value ELSE NULL END
+        ), 
+        '.'
+      ), 
+      user_pseudo_id
+    ) AS sk_session_id, 
+    CASE WHEN event_params_un.key = 'GUID_Event' THEN event_params_un.value.string_value ELSE NULL END as GUID, 
+    CASE WHEN event_name = 'Games' 
+    AND event_params_un.key = 'EventAction' THEN event_params_un.value.string_value ELSE NULL END as games_event_action, 
+    CASE WHEN event_name = 'Clicks' 
+    AND event_params_un.key = 'EventAction' THEN event_params_un.value.string_value ELSE NULL END as click_event, 
+    CASE WHEN event_name = 'page_view' 
+    AND event_params_un.key = 'page_title' THEN event_params_un.value.string_value ELSE NULL END as page_view, 
+    CASE WHEN (
+      event_name = 'Games'
+    ) 
+    AND event_params_un.key = 'Game_Category' THEN event_params_un.value.string_value ELSE NULL END as game_id, 
+    CASE WHEN (
+      event_name = 'Games'
+    ) 
+    AND event_params_un.key = 'Game_Name' THEN event_params_un.value.string_value ELSE NULL END as game_name 
+  FROM 
+    `steam-mantis-108908.analytics_270382730.events_*` CROSS 
+    JOIN UNNEST(event_params) AS event_params_un 
+  WHERE 
+    1 = 1 
+    AND _TABLE_SUFFIX = FORMAT_DATE(
+      "%Y%m%d", 
+      DATE_SUB(
+        CURRENT_DATE(), 
+        INTERVAL 2 DAY
+      )
+    )
+), 
+events as (
+  SELECT 
+    event_datetime, 
+    event_timestamp, 
+    user_pseudo_id, 
+    event_name, 
+    stream_id, 
+    geo_country, 
+    LEAD(event_timestamp, 1) OVER(
+      PARTITION BY user_pseudo_id 
+      ORDER BY 
+        event_timestamp
+    ) AS next_event_timestamp, 
+    LEAD(event_name, 1) OVER(
+      PARTITION BY user_pseudo_id 
+      ORDER BY 
+        event_timestamp
+    ) AS next_event_name, 
+    MAX(sk_session_id) AS sk_session_id, 
+    LAST_VALUE(
+      MAX(GUID) IGNORE NULLS
+    ) OVER(
+      PARTITION BY user_pseudo_id 
+      ORDER BY 
+        event_timestamp ASC
+    ) AS GUID, 
+    LAST_VALUE(
+      MAX(game_id) IGNORE NULLS
+    ) OVER(
+      PARTITION BY user_pseudo_id 
+      ORDER BY 
+        event_timestamp ASC
+    ) AS game_id, 
+    LAST_VALUE(
+      MAX(game_name) IGNORE NULLS
+    ) OVER(
+      PARTITION BY user_pseudo_id 
+      ORDER BY 
+        event_timestamp ASC
+    ) AS game_name, 
+    LAST_VALUE(
+      MAX(
+        CASE WHEN games_event_action = 'Game Played For Fun' THEN 1 ELSE NULL END
+      ) IGNORE NULLS
+    ) OVER(
+      PARTITION BY user_pseudo_id 
+      ORDER BY 
+        event_timestamp ASC
+    ) AS for_fun, 
+    MAX(click_event) AS click_event, 
+    MAX(page_view) AS page_view 
+  FROM 
+    raw_data 
+  WHERE 
+    1 = 1 
+  GROUP BY 
+    1, 
+    2, 
+    3, 
+    4, 
+    5, 
+    6
+) 
+SELECT 
+  game_name, 
+  geo_country, 
+  CURRENT_DATETIME() as runtime, 
+  COUNT(DISTINCT GUID) AS total_unique_players, 
+  COUNT(*) AS total_gameplays, 
+  COUNT(DISTINCT sk_session_id) AS total_play_sessions, 
+  SUM(
+    (
+      next_event_timestamp - event_timestamp
+    )/ 1000000
+  ) as total_playtime_seconds, 
+  MAX(
+    (
+      next_event_timestamp - event_timestamp
+    )/ 1000000
+  ) AS max_playtime_seconds, 
+  SUM(
+    (
+      next_event_timestamp - event_timestamp
+    )/ 1000000
+  ) - MAX(
+    (
+      next_event_timestamp - event_timestamp
+    )/ 1000000
+  ) AS total_playtime_seconds_safe FROM events WHERE 1 = 1 AND page_view = 'Casino Game Launcher' 
+  AND next_event_name != 'session_start' 
+  AND game_id IS NOT NULL AND COALESCE(for_fun, 0) = 0 GROUP BY 1, 
+  2, 
+  3
